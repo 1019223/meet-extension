@@ -1,0 +1,21 @@
+{
+    "name": "Meet Soccer",
+    "description": "Play soccer in google meet",
+    "version": "1.0",
+    "content_security_policy": {
+        "extension_pages": "script-src ; object-src 'self'"
+    },
+    "manifest_version": 3,
+    "permissions": [],
+    "host_permissions": ["https://meet.google.com/*"],
+      "content_scripts": [
+        {
+          "matches": ["https://meet.google.com/*"],
+          "js": ["dist/main.js"]
+        }
+      ],
+      "web_accessible_resources": [{
+        "resources":["resources/*"],
+        "matches":  [ "https://meet.google.com/*"]
+    }]
+  }
