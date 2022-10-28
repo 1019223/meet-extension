@@ -225,7 +225,7 @@ async function goal(){
   var sumPartcipants = document.getElementsByClassName('oZRSLe').length;
   const conclusionRef = doc(firestoreDB, "shoot", "conclusions");
   var isGoal = await getDoc(conclusionRef);
-  if(isGoal.data().conclusion > sumPartcipants/2){
+  if(isGoal.data().conclusion >= sumPartcipants/2){
     console.log("GOAL GOAL GOAL !!");
     goalImg();
   }else{

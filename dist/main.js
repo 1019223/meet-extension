@@ -24399,7 +24399,7 @@ const unsubscribeDbShoot = (0,firebase_firestore__WEBPACK_IMPORTED_MODULE_1__.on
       switch(change.doc.id){
         case 'shooter':
           console.log("shooter: ", change.doc.data());
-          if((change.doc.data().name != localStorage.getItem('player'))&&(change.doc.data().name != "a")){
+          if((change.doc.data().name != localStorage.getItem('player')) && (change.doc.data().name != "a")){
             setConclusion();
             console.log("シュートが放たれたぁぁぁ！！");
           }
@@ -24557,7 +24557,7 @@ async function goal(){
   var sumPartcipants = document.getElementsByClassName('oZRSLe').length;
   const conclusionRef = (0,firebase_firestore__WEBPACK_IMPORTED_MODULE_1__.doc)(firestoreDB, "shoot", "conclusions");
   var isGoal = await (0,firebase_firestore__WEBPACK_IMPORTED_MODULE_1__.getDoc)(conclusionRef);
-  if(isGoal.data().conclusion > sumPartcipants/2){
+  if(isGoal.data().conclusion >= sumPartcipants/2){
     console.log("GOAL GOAL GOAL !!");
     goalImg();
   }else{
