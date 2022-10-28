@@ -1,7 +1,9 @@
 
-
+.github/
+webpack.config.js
 firebase.js
-
+/.firebase
+package-lock.json
 # Logs
 logs
 *.log
