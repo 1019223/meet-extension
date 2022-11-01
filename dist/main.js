@@ -24401,7 +24401,7 @@ const unsubscribeDbShoot = (0,firebase_firestore__WEBPACK_IMPORTED_MODULE_1__.on
           console.log("shooter: ", change.doc.data());
           if((change.doc.data().name != localStorage.getItem('player')) && (change.doc.data().name != "a")){
             setConclusion();
-            console.log("シュートが放たれたぁぁぁ！！");
+            //console.log("シュートが放たれたぁぁぁ！！");
           }
           break
         case 'conclusions':
