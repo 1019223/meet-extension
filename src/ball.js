@@ -193,7 +193,7 @@ function achive(behavior, count){
         }
       break
       case 'dribble':
-        if(count >= 1 && array[2].achived == false) {
+        if(count >= 30 && array[2].achived == false) {
           array[2].achived = true; 
           titleLog(); 
           appearTitle(); 
