@@ -1,15 +1,36 @@
 import { initializeApp } from "@firebase/app";
-import { getFirestore, onSnapshot, collection, query, doc, updateDoc, setDoc, getDoc } from "firebase/firestore";
+import { getFirestore, onSnapshot, collection, query, doc, updateDoc, setDoc, getDoc, deleteField } from "firebase/firestore";
 
 
 var vad = require('./index.js');
 
-var speechCount = 0;
-var conclusion = 0 ;
-var shootCount = 0;
-
-var audioContext;
-
+var speechCount = 0; //発話回数
+var conclusion = 0;  //結論納得するかどうかの値。1で納得している，0で納得してない
+var shootCount = 0; //シュート数
+var passCount = 0; //パスを渡した回数
+let stop; //発話時間の終了時間を管理
+var timerId; //表示時間を管理
+var progress; //1発話時間
+var totalTalk = 0; //処理前総発話時間 
+var talkTime; //前回の発話時間
+var totalTalkCount = 0;//処理後総発話時間、DB格納用
+var count = 0; //voice stopから動き出すのと前回発話時間が総発話時間がNaNになるのでそれの対策
+var averageTime = 0; //発話平均時間
+var click = 0;
+var stopclick = 0;
+var ball_img = document.createElement('img');
+var audioContext; 
+var array =[{name : "パサー", imgPath : "resources/パサー.png", achived : false},
+{name : "ストライカー", imgPath : "resources/ストライカー.png", achived : false},
+{name : "ドリブラー", imgPath : "resources/ドリブラー.png", achived : false },
+{name : "凄腕パサー", imgPath : "resources/凄腕パサー.png", achived : false },
+{name : "点取り屋", imgPath : "resources/点取り屋.png", achived : false },
+{name : "凄腕ドリブラー", imgPath : "resources/凄腕ドリブラー.png", achived : false },
+{name : "精密機械", imgPath : "resources/精密機械.png", achived : false },
+{name : "爆撃機", imgPath : "resources/爆撃機.png", achived : false },
+{name : "ファンタジスタ", imgPath : "resources/ファンタジスタ.png", achived : false },
+{name : "サッカーの神様", imgPath : "resources/サッカーの神様.png", achived : false }
+]; 
 var valueContainer = document.createElement('div');
 document.body.appendChild(valueContainer);
 
@@ -35,18 +56,21 @@ const q = query(collection(firestoreDB, "players"));
 const unsubscribeDbPlayer = onSnapshot(q, (snapshot) => {
   snapshot.docChanges().forEach((change) => {
     if (change.type === "added") {
-        console.log("New players: ", change.doc.data());
+       // console.log("New players: ", change.doc.data());
     }
     if (change.type === "modified") {
-        console.log("Modified players: ", change.doc.data());
+        //console.log("Modified players: ", change.doc.data());
+        setBall(change.doc.id);
         if(localStorage.getItem('speechUser')){
           if(change.doc.id != localStorage.getItem('speechUser')){
-            console.log("change the world");
-            setBall(change.doc.id);
+            if(localStorage.getItem('speechUser') === localStorage.getItem('player')){
+            passCount += 1;
+            achive('pass', passCount);
+            //console.log("change the world");
+            }
           }
         }else{
-          console.log("firstime");
-          setBall(change.doc.id);
+          //console.log("firstime");
         }
         localStorage.setItem('speechUser',change.doc.id);
     }
@@ -71,9 +95,10 @@ const unsubscribeDbShoot = onSnapshot(r, (snapshot) => {
             setConclusion();
             //console.log("シュートが放たれたぁぁぁ！！");
           }
-          break
+        break
         case 'conclusions':
           goal();
+        break
       }
     }
     if (change.type === "removed") {
@@ -83,42 +108,33 @@ const unsubscribeDbShoot = onSnapshot(r, (snapshot) => {
   });
 });
 
-//ボールの生成
-var ball_img = document.createElement('img');
-ball_img.src = chrome.runtime.getURL("resources/soccer_ball.png");
-ball_img.style.display = "none";
-ball_img.style.position = "absolute";
-ball_img.style.zIndex = "99999";
-ball_img.style.width = "100px";
-ball_img.onclick = shoot;
-
 //変更があったタイミングで発火
 //全参加者のdata-participant-idを取得。DBに変更があった参加者のIDとの部分一致を探して、一致した参加者にボール表示
 function setBall(playerId){
-  console.log(playerId);
-  var ballList = [];
-  var ballPosition = document.getElementsByClassName('oZRSLe');
-  for( var i = 0; i < ballPosition.length; i++ ){
-    ballList.push(ballPosition[i].getAttribute('data-participant-id'));
-    console.log(ballList[i]);
-    if(ballList[i].indexOf(playerId)>-1){
-      console.log("sucess!");
-      ballPosition[i].before(ball_img);
-      ball_img.style.display = "block";
+  if(click >= 1){
+    //console.log(playerId);
+    var ballList = [];
+    var ballPosition = document.getElementsByClassName('oZRSLe');
+    for( var i = 0; i < ballPosition.length; i++ ){
+      ballList.push(ballPosition[i].getAttribute('data-participant-id'));
+      console.log(ballList[i]);
+      if(ballList[i].indexOf(playerId)>-1){
+        //console.log("sucess!");
+        ballPosition[i].before(ball_img);
+        ball_img.style.display = "block";
+      }
     }
-  }
+  } 
 }
 
 //シューター確認画面
 function shoot(){
   var flag = confirm("シュートを打ちますか？");
   if(flag){
-    console.log("ファイヤートルネード！！");
+    //console.log("ファイヤートルネード！！");
     countShoot();
     shootCount += 1;
     console.log(shootCount);
-  }else{
-    console.log("やめました");
   }
 }
 
@@ -135,45 +151,238 @@ function setConclusion(){
   countConclusion();
 }
 
+//称号を格納してる連想配列のachivedを更新する関数
+function achive(behavior, count){
+  if(document.getElementById("ballImg") != null){
+    //console.log("behavior " + behavior + "count= " + count); 
+    switch(behavior){
+      case 'pass':
+        if(count >= 10 && array[0].achived == false) {
+          array[0].achived = true; 
+          titleLog();
+          //console.log("pass1");
+        }
+        if(count >= 20 && array[3].achived == false) {
+          array[3].achived = true; 
+          titleLog();
+          //console.log("pass2");
+        }
+        if(count >= 30 && array[6].achived == false) {
+          array[6].achived = true; 
+          titleLog();
+          achive('god',1);
+          //console.log("pass3");
+        }
+      break
+      case 'shoot':
+        if(count >= 3 && array[1].achived == false) {
+          array[1].achived = true; 
+          titleLog();
+          //console.log("shoot1");
+        }
+        if(count >= 4 && array[4].achived == false) {
+          array[4].achived = true;
+          titleLog();
+          //console.log("shoot2");
+        }
+        if(count >= 5 && array[7].achived == false) {
+          array[7].achived = true; 
+          titleLog();
+          achive('god',1);
+          //console.log("shoot3");
+        }
+      break
+      case 'dribble':
+        if(count >= 1 && array[2].achived == false) {
+          array[2].achived = true; 
+          titleLog(); 
+          appearTitle(); 
+          //console.log("dri1");
+        }
+        if(count >= 60 && array[5].achived == false) {
+          array[5].achived = true; 
+          titleLog(); 
+          appearTitle();
+          //console.log("dri2");
+        }
+        if(count >= 120 && array[8].achived == false) {
+          array[8].achived = true; 
+          titleLog(); 
+          appearTitle();
+          achive('god',1);
+          //console.log("dri3");
+        }
+      break
+      case 'god':
+        if(array[6].achived == true && array[7].achived == true && array[8].achived == true) { 
+          array[9].achived = true; 
+          titleLog();
+          //console.log("god");
+        }
+      break
+    }
+  }
+}
+
+function appearTitle(){
+  array.map(element => 
+    {
+    if(element.achived){
+      if(document.getElementById(element.name) == null){
+        var achivedImg = document.createElement('img');
+        achivedImg.src = chrome.runtime.getURL(element.imgPath);
+        achivedImg.id = element.name;
+        achivedImg.style.transform = "translateX(7%)";
+        var menuId = document.getElementById('menu');
+        menuId.appendChild(achivedImg);
+        element.visible = true;
+      }
+    }
+    }
+);
+}
+
+
+//称号メニュー
+var title_img  = document.createElement('img');
+title_img.id = 'titleImg';
+title_img.src = chrome.runtime.getURL("resources/title.png");
+title_img.style.position = "absolute";
+title_img.style.zIndex = "99998";
+title_img.style.width = "75px";
+title_img.style.left = "90%";
+title_img.style.top = "5%";
+title_img.onclick = menuOpen;
+
+function menuOpen(){
+  //console.log("press");
+  var menuId = document.getElementById('menu');
+  if(menuId.style.display == "block"){
+      menuId.style.display = "none";
+      //console.log("aa");
+  }else{
+      menuId.style.display = "block";
+      appearTitle();
+  }
+}
+
+//実験1用のセット
 //セットボタンクリック時に発火
 //data-participant-idを取得、「/」を「-」に変換してドキュメントを作成
-function setPlayer(){
+function setPlayer1(){
   var className = document.getElementsByClassName('oZRSLe'); 
   var classList = [];
   for(var p = 0; p < className.length; p++){
     classList.push(className[p].getAttribute('data-participant-id'));
     var classNameId = classList[p];
   }
-  console.log(className);
+  //console.log(className);
   var playerId = classNameId.substring(classNameId.indexOf("devices/")+8);
-  console.log(playerId);
+  console.log("あなたのIDは "+ playerId );
   setDoc(doc(firestoreDB, "players", playerId),{
-    speech: 0
+    speech: speechCount
+  });
+  setDoc(doc(firestoreDB, "meetingBehavior1", playerId),{
+    speech: speechCount,
+    shoot: shootCount,
+    pass: passCount,
+    talk: totalTalkCount,
+    averageTalk: averageTime
   });
   localStorage.setItem('player',playerId);
-  console.log(localStorage.getItem('player'));
+  //console.log(localStorage.getItem('player'));
+}
+
+//実験2用、各パラメータを初期化して生成
+//セットボタンクリック時に発火
+//data-participant-idを取得、「/」を「-」に変換してドキュメントを作成
+//称号メニューボタン生成
+function setPlayer2(){
+  ball_img.id = "ballImg";
+  ball_img.src = chrome.runtime.getURL("resources/soccer_ball.png");
+  ball_img.style.display = "none";
+  ball_img.style.position = "absolute";
+  ball_img.style.zIndex = "99999";
+  ball_img.style.width = "100px";
+  ball_img.onclick = shoot;
+  if(click == 0){
+    speechCount = 0;
+    shootCount = 0;
+    passCount = 0;
+    totalTalk = 0;
+    averageTime = 0; 
+  }
+  var className = document.getElementsByClassName('oZRSLe'); 
+  var classList = [];
+  for(var p = 0; p < className.length; p++){
+    classList.push(className[p].getAttribute('data-participant-id'));
+    var classNameId = classList[p];
+    className[p].before(title_img);
+  }
+  if(document.getElementById("menu") == null){
+    var menu = document.createElement('div');
+    console.log("menu");
+    menu.className = "menu";
+    menu.id = "menu";
+    menu.style.position = "absolute";
+    menu.style.zIndex = "99999";
+    menu.style.backgroundColor = "black";
+    menu.style.width = "500px";
+    menu.style.height = "300px";
+    menu.style.left = "50%";
+    menu.style.top = "40%";
+    menu.style.transform = "translateY(-50%) translateX(-50%)";
+    menu.style.border = "1px solid white";
+    menu.style.overflowX = "auto";
+    menu.style.display = "none";
+    var parent = document.getElementById('titleImg');
+    parent.after(menu);
+}
+  //console.log(className);
+  var playerId = classNameId.substring(classNameId.indexOf("devices/")+8);
+  console.log("あなたのIDは "+ playerId );
+  setDoc(doc(firestoreDB, "players", playerId),{
+    speech: speechCount
+  });
+  setDoc(doc(firestoreDB, "meetingBehavior2", playerId),{
+    speech: speechCount,
+    shoot: shootCount,
+    pass: passCount,
+    talk: totalTalkCount,
+    averageTalk: averageTime
+  });
+  localStorage.setItem('player',playerId);
+  //console.log(localStorage.getItem('player'));
+  click++;
 }
 
 //各ボタンの生成
 const createElements = () => {
-  console.log("hello world");
   document.body.insertAdjacentHTML('beforebegin', `
  <div>
- <button id="btn1" style="z-index: 999999; position: absolute;">SET</button>
- <button id="btn2" style="z-index: 999999; position: absolute; left: 4%;">START</button>
- <button id="btn3" style="z-index: 999999; position: absolute; left: 8%;">RESET</button>
+ <button id="btn1" style="z-index: 999999; position: absolute;">SET1</button>
+ <button id="btn2" style="z-index: 999999; position: absolute; left: 4%;">SET2</button>
+ <button id="btn3" style="z-index: 999999; position: absolute; left: 8%;">STOP</button>
+ <button id="btn4" style="z-index: 999999; position: absolute; left: 12%;">START</button>
+ <button id="btn5" style="z-index: 999999; position: absolute; left: 16%;">RESET</button>
  </div>
   `)
 }
 createElements();
 
-document.querySelector('#btn1').addEventListener("click",()=>{setPlayer();});
-document.querySelector('#btn2').addEventListener("click",()=>{requestMic();});
-document.querySelector('#btn3').addEventListener("click",()=>{resetShooter();});
+document.querySelector('#btn1').addEventListener("click",()=>{setPlayer1();});
+document.querySelector('#btn2').addEventListener("click",()=>{setPlayer2();});
+document.querySelector('#btn3').addEventListener("click",()=>{timeStop();});
+document.querySelector('#btn4').addEventListener("click",()=>{requestMic();});
+document.querySelector('#btn5').addEventListener("click",()=>{resetShooter();});
+
+function timeStop(){
+  stopclick++;
+}
 
 //発話回数をDBに保存
 async function countPlayer(){
-    console.log(firestoreDB, "players", localStorage.getItem('player'));
+    //console.log(firestoreDB, "players", localStorage.getItem('player'));
     const playersRef = doc(firestoreDB, "players", localStorage.getItem('player'))
     await updateDoc(playersRef, {speech: speechCount});
 }
@@ -186,6 +395,7 @@ async function countShoot(){
     });
 }
 
+//シューターをリセット
 async function resetShooter(){
   const shootRef = doc(firestoreDB, "shoot", "shooter");
   await updateDoc(shootRef,{
@@ -197,7 +407,7 @@ async function resetShooter(){
 async function countConclusion(){
   const conclusionRef = doc(firestoreDB, "shoot", "conclusions");
   var getConclusion = await getDoc(conclusionRef);
-  console.log(getConclusion);
+  //console.log(getConclusion);
   var sumConclusions =  getConclusion.data().conclusion + conclusion;
   var paricipant = getConclusion.data().conclusion + 1;
   await updateDoc(conclusionRef,{
@@ -206,9 +416,64 @@ async function countConclusion(){
     });
 }
 
+async function countMeetingBehabior(){
+  if(click == 0 && stopclick == 0){
+  const meetingBehavior1Ref = doc(firestoreDB, "meetingBehavior1", localStorage.getItem('player') );
+  await updateDoc(meetingBehavior1Ref,{
+    speech: speechCount,
+    shoot: shootCount,
+    pass: passCount,
+    talk: totalTalkCount,
+    averageTalk: averageTime
+    });
+  }
+  else if(click >= 1){
+    const meetingBehavior2Ref = doc(firestoreDB, "meetingBehavior2", localStorage.getItem('player') );
+    await updateDoc(meetingBehavior2Ref,{
+      speech: speechCount,
+      shoot: shootCount,
+      pass: passCount,
+      talk: totalTalkCount,
+      averageTalk: averageTime
+      });
+  }
+}
+
+//称号通知HTML要素
+var title = document.createElement('dialog');
+var titleGet = document.createElement('audio');
+titleGet.src = chrome.runtime.getURL("resources/titleGet.mp3");
+title.id = 'achievement' 
+title.innerHTML = "称号を獲得しました"
+title.width = "250px";
+title.padding = "30px 20px";
+title.style.zIndex = "999999";
+document.body.prepend(title);
+
+//称号通知
+function titleLog(){
+  if(document.getElementById("ballImg") != null){
+  title.show();
+  titleGet.play();
+  clearTimeout( timerId ); 
+  timerId = setTimeout( close , 2000 );
+  }
+}
+
+//称号通知 & ゴール表示ストップ
+function close(){
+  title.close();
+  if(document.getElementById("goalImg") != null){
+  var goal_img = document.getElementById("goalImg");
+  goal_img.style.zIndex = "1";
+  }
+}
+
+
 //ゴール表示
 function goalImg(){
 var goal_img = document.createElement('img');
+goal_img.id = "goalImg"
 goal_img.src = chrome.runtime.getURL("resources/GOAL.png");
 goal_img.style.display = "block";
 goal_img.style.position = "absolute";
@@ -216,7 +481,9 @@ goal_img.style.zIndex = "99999";
 goal_img.style.top = "50%";
 goal_img.style.left = "50%";
 goal_img.style.transform = "translateY(-50%) translateX(-50%)";
-document.body.appendChild(goal_img);
+document.body.prepend(goal_img);
+timerId = setTimeout(close, 3000);
+countMeetingBehabior();
 }
 
 //参加者の半数以上の納得が得られた場合にゴール
@@ -228,6 +495,7 @@ async function goal(){
   if(isGoal.data().conclusion >= sumPartcipants/2){
     console.log("GOAL GOAL GOAL !!");
     goalImg();
+    achive('shoot', isGoal.data().conclusion);
   }else{
     console.log("No Goal");
     if(isGoal.data().participants == sumPartcipants){
@@ -258,17 +526,46 @@ function handleMicConnectError() {
   console.warn('Could not connect microphone. Possible rejected by the user or is blocked by the browser.');
 }
 
+//発話時間計測
+function timer() {
+  const start = new Date().getTime();
+  stop = setInterval(function() {
+    progress = new Date().getTime() - start ;
+    talkTime = new Date().getTime() - start + totalTalk;
+    const nos = Math.trunc(progress / 1000);
+    const nosTalkTime = Math.trunc(talkTime / 1000);
+    const second = nos % 86400 % 3600 % 60;
+    const secondTalkTime = nosTalkTime % 86400 % 3600 % 60;
+    const minute = Math.trunc((nos % 86400 % 3600 / 60));
+    const minuteTalkTime = Math.trunc((nosTalkTime % 86400 % 3600 / 60));
+    //console.log( minute + ":" + second );
+    //console.log( minuteTalkTime + ":" + secondTalkTime);
+    averageTime = (60 * minuteTalkTime + secondTalkTime + second) / speechCount; 
+    totalTalkCount = minuteTalkTime*60 + secondTalkTime;
+    achive('dribble', totalTalkCount); 
+    },10)   
+}
+
 //音声認識
+//音声認識時にプレイヤーの発話をカウント、DBに格納する関数を発火
+//発話時間計測関数の発火
 function startUserMedia(stream) {
   var options = {
     onVoiceStart: function() {
       console.log('voice start');
       speechCount += 1;
       countPlayer();
+      timer();
       stateContainer.innerHTML = 'Voice state: <strong>active</strong>';
     },
     onVoiceStop: function() {
       console.log('voice stop');
+      clearInterval(stop);
+      if(count != 0){
+        totalTalk = talkTime;
+      }
+      count++;
+      countMeetingBehabior();
       stateContainer.innerHTML = 'Voice state: <strong>inactive</strong>';
     },
     onUpdate: function(val) {
