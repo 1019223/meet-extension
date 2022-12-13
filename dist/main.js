@@ -24349,7 +24349,7 @@ var totalTalkCount = 0;//処理後総発話時間、DB格納用
 var count = 0; //voice stopから動き出すのと前回発話時間が総発話時間がNaNになるのでそれの対策
 var averageTime = 0; //発話平均時間
 var click = 0;
-var stopclick = 0;
+var stopclick = false;
 var ball_img = document.createElement('img');
 var audioContext; 
 var array =[{name : "パサー", imgPath : "resources/パサー.png", achived : false},
@@ -24383,7 +24383,7 @@ const firebaseConfig = {
 const app = (0,_firebase_app__WEBPACK_IMPORTED_MODULE_0__.initializeApp)(firebaseConfig);
 const firestoreDB = (0,firebase_firestore__WEBPACK_IMPORTED_MODULE_1__.getFirestore)(app);
 
-//シュート操作のリアルタイムでの変更をDB監視
+//発話交替をリアルタイムでの変更をDB監視
 const q = (0,firebase_firestore__WEBPACK_IMPORTED_MODULE_1__.query)((0,firebase_firestore__WEBPACK_IMPORTED_MODULE_1__.collection)(firestoreDB, "players"));
 const unsubscribeDbPlayer = (0,firebase_firestore__WEBPACK_IMPORTED_MODULE_1__.onSnapshot)(q, (snapshot) => {
   snapshot.docChanges().forEach((change) => {
@@ -24461,12 +24461,14 @@ function setBall(playerId){
 
 //シューター確認画面
 function shoot(){
-  var flag = confirm("シュートを打ちますか？");
-  if(flag){
-    //console.log("ファイヤートルネード！！");
-    countShoot();
-    shootCount += 1;
-    console.log(shootCount);
+  if(localStorage.getItem('speechUser') === localStorage.getItem('player')){
+    var flag = confirm("シュートを打ちますか？");
+    if(flag){
+      //console.log("ファイヤートルネード！！");
+      countShoot();
+      shootCount += 1;
+      console.log(shootCount);
+    }
   }
 }
 
@@ -24630,6 +24632,7 @@ function setPlayer1(){
 //data-participant-idを取得、「/」を「-」に変換してドキュメントを作成
 //称号メニューボタン生成
 function setPlayer2(){
+  stopclick = false;
   ball_img.id = "ballImg";
   ball_img.src = chrome.runtime.getURL("resources/soccer_ball.png");
   ball_img.style.display = "none";
@@ -24696,7 +24699,7 @@ const createElements = () => {
  <button id="btn2" style="z-index: 999999; position: absolute; left: 4%;">SET2</button>
  <button id="btn3" style="z-index: 999999; position: absolute; left: 8%;">STOP</button>
  <button id="btn4" style="z-index: 999999; position: absolute; left: 12%;">START</button>
- <button id="btn5" style="z-index: 999999; position: absolute; left: 16%;">RESET</button>
+ <button id="btn5" style="z-index: 999999; position: absolute; left: 17%;">RESET</button>
  </div>
   `)
 }
@@ -24709,7 +24712,11 @@ document.querySelector('#btn4').addEventListener("click",()=>{requestMic();});
 document.querySelector('#btn5').addEventListener("click",()=>{resetShooter();});
 
 function timeStop(){
-  stopclick++;
+  if(stopclick == false){
+    stopclick = true;
+  }else{
+    stopclick = false;
+  }
 }
 
 //発話回数をDBに保存
@@ -24749,7 +24756,7 @@ async function countConclusion(){
 }
 
 async function countMeetingBehabior(){
-  if(click == 0 && stopclick == 0){
+  if(click == 0 && stopclick == false){
   const meetingBehavior1Ref = (0,firebase_firestore__WEBPACK_IMPORTED_MODULE_1__.doc)(firestoreDB, "meetingBehavior1", localStorage.getItem('player') );
   await (0,firebase_firestore__WEBPACK_IMPORTED_MODULE_1__.updateDoc)(meetingBehavior1Ref,{
     speech: speechCount,
@@ -24759,7 +24766,7 @@ async function countMeetingBehabior(){
     averageTalk: averageTime
     });
   }
-  else if(click >= 1){
+  else if(click >= 1 && stopclick == false){
     const meetingBehavior2Ref = (0,firebase_firestore__WEBPACK_IMPORTED_MODULE_1__.doc)(firestoreDB, "meetingBehavior2", localStorage.getItem('player') );
     await (0,firebase_firestore__WEBPACK_IMPORTED_MODULE_1__.updateDoc)(meetingBehavior2Ref,{
       speech: speechCount,
