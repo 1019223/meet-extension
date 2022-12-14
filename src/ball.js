@@ -17,9 +17,16 @@ var totalTalkCount = 0;//処理後総発話時間、DB格納用
 var count = 0; //voice stopから動き出すのと前回発話時間が総発話時間がNaNになるのでそれの対策
 var averageTime = 0; //発話平均時間
 var click = 0;
-var stopclick = false;
+var stopclick = 0;
 var ball_img = document.createElement('img');
+var click = 0; //SET1,2の管理に使う
+var stopclick = false; //DB書き込みを管理
+var ball_img = document.createElement('img'); //サッカーボール
+var goal_img = document.createElement('img'); //ゴール画面
+var noGoal_img = document.createElement('img'); //ノーゴール画面
 var audioContext; 
+
+//称号
 var array =[{name : "パサー", imgPath : "resources/パサー.png", achived : false},
 {name : "ストライカー", imgPath : "resources/ストライカー.png", achived : false},
 {name : "ドリブラー", imgPath : "resources/ドリブラー.png", achived : false },
@@ -31,6 +38,7 @@ var array =[{name : "パサー", imgPath : "resources/パサー.png", achived : 
 {name : "ファンタジスタ", imgPath : "resources/ファンタジスタ.png", achived : false },
 {name : "サッカーの神様", imgPath : "resources/サッカーの神様.png", achived : false }
 ]; 
+
 var valueContainer = document.createElement('div');
 document.body.appendChild(valueContainer);
 
@@ -51,7 +59,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const firestoreDB = getFirestore(app);
 
-//発話交替をリアルタイムでの変更をDB監視
+//シュート操作のリアルタイムでの変更をDB監視
 const q = query(collection(firestoreDB, "players"));
 const unsubscribeDbPlayer = onSnapshot(q, (snapshot) => {
   snapshot.docChanges().forEach((change) => {
@@ -85,12 +93,12 @@ const r = query(collection(firestoreDB, "shoot"));
 const unsubscribeDbShoot = onSnapshot(r, (snapshot) => {
   snapshot.docChanges().forEach((change) => {
     if (change.type === "added") {
-        console.log("New shoot: ", change.doc.data());
+        //console.log("New shoot: ", change.doc.data());
     }
     if (change.type === "modified") {
       switch(change.doc.id){
         case 'shooter':
-          console.log("shooter: ", change.doc.data());
+         // console.log("shooter: ", change.doc.data());
           if((change.doc.data().name != localStorage.getItem('player')) && (change.doc.data().name != "a")){
             setConclusion();
             //console.log("シュートが放たれたぁぁぁ！！");
@@ -102,7 +110,7 @@ const unsubscribeDbShoot = onSnapshot(r, (snapshot) => {
       }
     }
     if (change.type === "removed") {
-        console.log("Removed shooter: ", change.doc.data());
+       // console.log("Removed shooter: ", change.doc.data());
     }
   
   });
@@ -117,7 +125,7 @@ function setBall(playerId){
     var ballPosition = document.getElementsByClassName('oZRSLe');
     for( var i = 0; i < ballPosition.length; i++ ){
       ballList.push(ballPosition[i].getAttribute('data-participant-id'));
-      console.log(ballList[i]);
+      //console.log(ballList[i]);
       if(ballList[i].indexOf(playerId)>-1){
         //console.log("sucess!");
         ballPosition[i].before(ball_img);
@@ -129,14 +137,12 @@ function setBall(playerId){
 
 //シューター確認画面
 function shoot(){
-  if(localStorage.getItem('speechUser') === localStorage.getItem('player')){
-    var flag = confirm("シュートを打ちますか？");
-    if(flag){
-      //console.log("ファイヤートルネード！！");
-      countShoot();
-      shootCount += 1;
-      console.log(shootCount);
-    }
+  var flag = confirm("シュートを打ちますか？");
+  if(flag){
+    //console.log("ファイヤートルネード！！");
+    countShoot();
+    shootCount += 1;
+    console.log(shootCount);
   }
 }
 
@@ -195,7 +201,7 @@ function achive(behavior, count){
         }
       break
       case 'dribble':
-        if(count >= 30 && array[2].achived == false) {
+        if(count >= 1 && array[2].achived == false) {
           array[2].achived = true; 
           titleLog(); 
           appearTitle(); 
@@ -219,6 +225,7 @@ function achive(behavior, count){
         if(array[6].achived == true && array[7].achived == true && array[8].achived == true) { 
           array[9].achived = true; 
           titleLog();
+          appearTitle();
           //console.log("god");
         }
       break
@@ -237,7 +244,6 @@ function appearTitle(){
         achivedImg.style.transform = "translateX(7%)";
         var menuId = document.getElementById('menu');
         menuId.appendChild(achivedImg);
-        element.visible = true;
       }
     }
     }
@@ -252,7 +258,7 @@ title_img.src = chrome.runtime.getURL("resources/title.png");
 title_img.style.position = "absolute";
 title_img.style.zIndex = "99998";
 title_img.style.width = "75px";
-title_img.style.left = "90%";
+title_img.style.left = "85%";
 title_img.style.top = "5%";
 title_img.onclick = menuOpen;
 
@@ -300,7 +306,6 @@ function setPlayer1(){
 //data-participant-idを取得、「/」を「-」に変換してドキュメントを作成
 //称号メニューボタン生成
 function setPlayer2(){
-  stopclick = false;
   ball_img.id = "ballImg";
   ball_img.src = chrome.runtime.getURL("resources/soccer_ball.png");
   ball_img.style.display = "none";
@@ -324,7 +329,6 @@ function setPlayer2(){
   }
   if(document.getElementById("menu") == null){
     var menu = document.createElement('div');
-    console.log("menu");
     menu.className = "menu";
     menu.id = "menu";
     menu.style.position = "absolute";
@@ -338,8 +342,7 @@ function setPlayer2(){
     menu.style.border = "1px solid white";
     menu.style.overflowX = "auto";
     menu.style.display = "none";
-    var parent = document.getElementById('titleImg');
-    parent.after(menu);
+    document.body.prepend(menu);
 }
   //console.log(className);
   var playerId = classNameId.substring(classNameId.indexOf("devices/")+8);
@@ -367,7 +370,6 @@ const createElements = () => {
  <button id="btn2" style="z-index: 999999; position: absolute; left: 4%;">SET2</button>
  <button id="btn3" style="z-index: 999999; position: absolute; left: 8%;">STOP</button>
  <button id="btn4" style="z-index: 999999; position: absolute; left: 12%;">START</button>
- <button id="btn5" style="z-index: 999999; position: absolute; left: 17%;">RESET</button>
  </div>
   `)
 }
@@ -377,14 +379,11 @@ document.querySelector('#btn1').addEventListener("click",()=>{setPlayer1();});
 document.querySelector('#btn2').addEventListener("click",()=>{setPlayer2();});
 document.querySelector('#btn3').addEventListener("click",()=>{timeStop();});
 document.querySelector('#btn4').addEventListener("click",()=>{requestMic();});
-document.querySelector('#btn5').addEventListener("click",()=>{resetShooter();});
+//document.querySelector('#btn5').addEventListener("click",()=>{resetShooter();});
 
+//DBに書き込みを管理
 function timeStop(){
-  if(stopclick == false){
-    stopclick = true;
-  }else{
-    stopclick = false;
-  }
+  stopclick++;
 }
 
 //発話回数をDBに保存
@@ -397,18 +396,22 @@ async function countPlayer(){
 //シュートを打った人をDBに保存
 async function countShoot(){
   const shootRef = doc(firestoreDB, "shoot", "shooter");
+  const conclusionRef = doc(firestoreDB, "shoot", "conclusions");
   await updateDoc(shootRef,{
       name: localStorage.getItem('player')
     });
+  await updateDoc(conclusionRef,{
+      conclusion: 1
+    });
 }
 
-//シューターをリセット
+/*//シューターをリセット
 async function resetShooter(){
   const shootRef = doc(firestoreDB, "shoot", "shooter");
   await updateDoc(shootRef,{
       name: "a"
     });
-}
+}*/
 
 //納得かどうかをDBに保存
 async function countConclusion(){
@@ -423,8 +426,9 @@ async function countConclusion(){
     });
 }
 
+//会議行動をDBに書き込み
 async function countMeetingBehabior(){
-  if(click == 0 && stopclick == false){
+  if(click == 0 && stopclick == 0){
   const meetingBehavior1Ref = doc(firestoreDB, "meetingBehavior1", localStorage.getItem('player') );
   await updateDoc(meetingBehavior1Ref,{
     speech: speechCount,
@@ -434,7 +438,7 @@ async function countMeetingBehabior(){
     averageTalk: averageTime
     });
   }
-  else if(click >= 1 && stopclick == false){
+  else if(click >= 1){
     const meetingBehavior2Ref = doc(firestoreDB, "meetingBehavior2", localStorage.getItem('player') );
     await updateDoc(meetingBehavior2Ref,{
       speech: speechCount,
@@ -470,16 +474,17 @@ function titleLog(){
 //称号通知 & ゴール表示ストップ
 function close(){
   title.close();
-  if(document.getElementById("goalImg") != null){
-  var goal_img = document.getElementById("goalImg");
-  goal_img.style.zIndex = "1";
+  if(goal_img.style.zIndex != "1" ){
+    goal_img.style.zIndex = "1";
+  }
+  if(noGoal_img.style.zIndex != "1" ){
+    noGoal_img.style.zIndex = "1";
   }
 }
 
 
 //ゴール表示
 function goalImg(){
-var goal_img = document.createElement('img');
 goal_img.id = "goalImg"
 goal_img.src = chrome.runtime.getURL("resources/GOAL.png");
 goal_img.style.display = "block";
@@ -493,21 +498,43 @@ timerId = setTimeout(close, 3000);
 countMeetingBehabior();
 }
 
+function noGoalImg(){
+  noGoal_img.id = "goalImg"
+  noGoal_img.src = chrome.runtime.getURL("resources/noGoal.png");
+  noGoal_img.style.display = "block";
+  noGoal_img.style.position = "absolute";
+  noGoal_img.style.zIndex = "99999";
+  noGoal_img.style.top = "50%";
+  noGoal_img.style.left = "50%";
+  noGoal_img.style.transform = "translateY(-50%) translateX(-50%)";
+  document.body.prepend(noGoal_img);
+  timerId = setTimeout(close, 3000);
+  }
+
 //参加者の半数以上の納得が得られた場合にゴール
 //ノーゴールかつ会議参加者全員が投票していたら投票内容をリセット
 async function goal(){
   var sumPartcipants = document.getElementsByClassName('oZRSLe').length;
   const conclusionRef = doc(firestoreDB, "shoot", "conclusions");
+  const shooterRef = doc(firestoreDB, "shoot", "name");
   var isGoal = await getDoc(conclusionRef);
+  var shooter = await getDoc(shooterRef);
   if(isGoal.data().conclusion >= sumPartcipants/2){
-    console.log("GOAL GOAL GOAL !!");
+    //console.log("GOAL GOAL GOAL !!");
     goalImg();
+    if(shooter == localStorage.getItem('player')){
     achive('shoot', isGoal.data().conclusion);
+    }
   }else{
-    console.log("No Goal");
+    //console.log("No Goal");
     if(isGoal.data().participants == sumPartcipants){
+      noGoalImg();
       await updateDoc(conclusionRef,{
+        conclusion: 0,
         participants: 0
+      });
+      await updateDoc(shooterRef,{
+        name: "a"
       });
     }
   }
@@ -543,7 +570,6 @@ function timer() {
     const nosTalkTime = Math.trunc(talkTime / 1000);
     const second = nos % 86400 % 3600 % 60;
     const secondTalkTime = nosTalkTime % 86400 % 3600 % 60;
-    const minute = Math.trunc((nos % 86400 % 3600 / 60));
     const minuteTalkTime = Math.trunc((nosTalkTime % 86400 % 3600 / 60));
     //console.log( minute + ":" + second );
     //console.log( minuteTalkTime + ":" + secondTalkTime);
@@ -559,14 +585,14 @@ function timer() {
 function startUserMedia(stream) {
   var options = {
     onVoiceStart: function() {
-      console.log('voice start');
+      //console.log('voice start');
       speechCount += 1;
       countPlayer();
       timer();
       stateContainer.innerHTML = 'Voice state: <strong>active</strong>';
     },
     onVoiceStop: function() {
-      console.log('voice stop');
+      //console.log('voice stop');
       clearInterval(stop);
       if(count != 0){
         totalTalk = talkTime;
