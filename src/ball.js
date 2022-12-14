@@ -516,14 +516,16 @@ function noGoalImg(){
 async function goal(){
   var sumPartcipants = document.getElementsByClassName('oZRSLe').length;
   const conclusionRef = doc(firestoreDB, "shoot", "conclusions");
-  const shooterRef = doc(firestoreDB, "shoot", "name");
+  const shooterRef = doc(firestoreDB, "shoot", "shooter");
   var isGoal = await getDoc(conclusionRef);
   var shooter = await getDoc(shooterRef);
   if(isGoal.data().conclusion >= sumPartcipants/2){
     //console.log("GOAL GOAL GOAL !!");
-    goalImg();
-    if(shooter == localStorage.getItem('player')){
-    achive('shoot', isGoal.data().conclusion);
+    if(isGoal.data().participants == sumPartcipants){
+      goalImg();
+      if(shooter == localStorage.getItem('player')){
+      achive('shoot', isGoal.data().conclusion);
+      }
     }
   }else{
     //console.log("No Goal");

@@ -24848,14 +24848,16 @@ function noGoalImg(){
 async function goal(){
   var sumPartcipants = document.getElementsByClassName('oZRSLe').length;
   const conclusionRef = (0,firebase_firestore__WEBPACK_IMPORTED_MODULE_1__.doc)(firestoreDB, "shoot", "conclusions");
-  const shooterRef = (0,firebase_firestore__WEBPACK_IMPORTED_MODULE_1__.doc)(firestoreDB, "shoot", "name");
+  const shooterRef = (0,firebase_firestore__WEBPACK_IMPORTED_MODULE_1__.doc)(firestoreDB, "shoot", "shooter");
   var isGoal = await (0,firebase_firestore__WEBPACK_IMPORTED_MODULE_1__.getDoc)(conclusionRef);
   var shooter = await (0,firebase_firestore__WEBPACK_IMPORTED_MODULE_1__.getDoc)(shooterRef);
   if(isGoal.data().conclusion >= sumPartcipants/2){
     //console.log("GOAL GOAL GOAL !!");
-    goalImg();
-    if(shooter == localStorage.getItem('player')){
-    achive('shoot', isGoal.data().conclusion);
+    if(isGoal.data().participants == sumPartcipants){
+      goalImg();
+      if(shooter == localStorage.getItem('player')){
+      achive('shoot', isGoal.data().conclusion);
+      }
     }
   }else{
     //console.log("No Goal");
