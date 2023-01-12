@@ -142,7 +142,7 @@ function shoot(){
     //console.log("ファイヤートルネード！！");
     countShoot();
     shootCount += 1;
-    console.log(shootCount);
+    //console.log(shootCount);
   }
 }
 
@@ -170,12 +170,12 @@ function achive(behavior, count){
           titleLog();
           //console.log("pass1");
         }
-        if(count >= 20 && array[3].achived == false) {
+        if(count >= 30 && array[3].achived == false) {
           array[3].achived = true; 
           titleLog();
           //console.log("pass2");
         }
-        if(count >= 30 && array[6].achived == false) {
+        if(count >= 60 && array[6].achived == false) {
           array[6].achived = true; 
           titleLog();
           achive('god',1);
@@ -201,7 +201,7 @@ function achive(behavior, count){
         }
       break
       case 'dribble':
-        if(count >= 1 && array[2].achived == false) {
+        if(count >= 30 && array[2].achived == false) {
           array[2].achived = true; 
           titleLog(); 
           appearTitle(); 
