@@ -24638,6 +24638,7 @@ function setPlayer1(){
 //data-participant-idを取得、「/」を「-」に変換してドキュメントを作成
 //称号メニューボタン生成
 function setPlayer2(){
+  stopclick = 0;
   ball_img.id = "ballImg";
   ball_img.src = chrome.runtime.getURL("resources/soccer_ball.png");
   ball_img.style.display = "none";
@@ -24770,7 +24771,7 @@ async function countMeetingBehabior(){
     averageTalk: averageTime
     });
   }
-  else if(click >= 1){
+  else if(click >= 1 && stopclick == 0){
     const meetingBehavior2Ref = (0,firebase_firestore__WEBPACK_IMPORTED_MODULE_1__.doc)(firestoreDB, "meetingBehavior2", localStorage.getItem('player') );
     await (0,firebase_firestore__WEBPACK_IMPORTED_MODULE_1__.updateDoc)(meetingBehavior2Ref,{
       speech: speechCount,
